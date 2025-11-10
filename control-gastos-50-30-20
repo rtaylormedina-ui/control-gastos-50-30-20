@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinanzApp - Control de Gastos 50/30/20</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --success: #4cc9f0;
+            --danger: #f72585;
+            --warning: #f8961e;
+            --info: #4895ef;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --needs: #4cc9f0;
+            --wants: #7209b7;
+            --savings: #06d6a0;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fb;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .logo h1 {
+            color: var(--primary);
+            font-size: 1.8rem;
+        }
+        
+        .user-actions {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .btn-outline {
+            background-color: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        
+        .amount {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+        
+        .progress-container {
+            height: 10px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            border-radius: 5px;
+        }
+        
+        .needs-progress {
+            background-color: var(--needs);
+        }
+        
+        .wants-progress {
+            background-color: var(--wants);
+        }
+        
+        .savings-progress {
+            background-color: var(--savings);
+        }
+        
+        .charts-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .chart-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        
+        .transactions-container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+        }
+        
+        .transaction-list {
+            margin-top: 15px;
+        }
+        
+        .transaction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .transaction-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .transaction-category {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .transaction-amount {
+            font-weight: 600;
+        }
+        
+        .expense {
+            color: var(--danger);
+        }
+        
+        .income {
+            color: var(--savings);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6c757d;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+        
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .category-tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .needs-tag {
+            background-color: rgba(76, 201, 240, 0.2);
+            color: var(--needs);
+        }
+        
+        .wants-tag {
+            background-color: rgba(114, 9, 183, 0.2);
+            color: var(--wants);
+        }
+        
+        .savings-tag {
+            background-color: rgba(6, 214, 160, 0.2);
+            color: var(--savings);
+        }
+        
+        .no-transactions {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+            font-style: italic;
+        }
+        
+        @media (max-width: 992px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <h1>FinanzApp</h1>
+                <span>Control de Gastos 50/30/20</span>
+            </div>
+            <div class="user-actions">
+                <button class="btn btn-outline" id="exportBtn">Exportar Datos</button>
+                <button class="btn btn-outline" id="clearDataBtn">Limpiar Datos</button>
+                <button class="btn btn-primary" id="addTransactionBtn">Agregar Transacción</button>
+            </div>
+        </header>
+        
+        <div class="dashboard-grid">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Necesidades (50%)</h2>
+                    <span class="category-tag needs-tag">Esencial</span>
+                </div>
+                <div class="amount" id="needsAmount">$0</div>
+                <div class="progress-container">
+                    <div class="progress-bar needs-progress" id="needsProgress" style="width: 0%"></div>
+                </div>
+                <div class="card-footer">
+                    <small>Presupuesto: <span id="needsBudget">$0</span></small>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Deseos (30%)</h2>
+                    <span class="category-tag wants-tag">Opcional</span>
+                </div>
+                <div class="amount" id="wantsAmount">$0</div>
+                <div class="progress-container">
+                    <div class="progress-bar wants-progress" id="wantsProgress" style="width: 0%"></div>
+                </div>
+                <div class="card-footer">
+                    <small>Presupuesto: <span id="wantsBudget">$0</span></small>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Ahorro (20%)</h2>
+                    <span class="category-tag savings-tag">Futuro</span>
+                </div>
+                <div class="amount" id="savingsAmount">$0</div>
+                <div class="progress-container">
+                    <div class="progress-bar savings-progress" id="savingsProgress" style="width: 0%"></div>
+                </div>
+                <div class="card-footer">
+                    <small>Presupuesto: <span id="savingsBudget">$0</span></small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="charts-container">
+            <div class="chart-card">
+                <h2 class="card-title">Distribución de Gastos</h2>
+                <canvas id="expensesChart"></canvas>
+            </div>
+            
+            <div class="chart-card">
+                <h2 class="card-title">Progreso Mensual</h2>
+                <canvas id="progressChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="transactions-container">
+            <div class="card-header">
+                <h2 class="card-title">Últimas Transacciones</h2>
+                <button class="btn btn-outline" id="filterBtn">Filtrar</button>
+            </div>
+            <div class="transaction-list" id="transactionList">
+                <div class="no-transactions">No hay transacciones registradas</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para agregar transacción -->
+    <div class="modal" id="transactionModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Agregar Transacción</h2>
+                <button class="close-modal" id="closeModal">&times;</button>
+            </div>
+            <form id="transactionForm">
+                <div class="form-group">
+                    <label for="transactionType">Tipo</label>
+                    <select class="form-control" id="transactionType" required>
+                        <option value="">Seleccionar tipo</option>
+                        <option value="income">Ingreso</option>
+                        <option value="expense">Gasto</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="transactionAmount">Monto</label>
+                    <input type="number" class="form-control" id="transactionAmount" step="0.01" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="transactionDescription">Descripción</label>
+                    <input type="text" class="form-control" id="transactionDescription" required>
+                </div>
+                <div class="form-group">
+                    <label for="transactionCategory">Categoría</label>
+                    <select class="form-control" id="transactionCategory" required>
+                        <option value="">Seleccionar categoría</option>
+                        <optgroup label="Necesidades (50%)">
+                            <option value="vivienda">Vivienda</option>
+                            <option value="alimentacion">Alimentación</option>
+                            <option value="transporte">Transporte</option>
+                            <option value="salud">Salud</option>
+                            <option value="servicios">Servicios Básicos</option>
+                        </optgroup>
+                        <optgroup label="Deseos (30%)">
+                            <option value="entretenimiento">Entretenimiento</option>
+                            <option value="restaurantes">Restaurantes</option>
+                            <option value="viajes">Viajes</option>
+                            <option value="ropa">Ropa</option>
+                            <option value="hobbies">Hobbies</option>
+                        </optgroup>
+                        <optgroup label="Ahorro (20%)">
+                            <option value="ahorro">Ahorro</option>
+                            <option value="inversion">Inversión</option>
+                            <option value="deudas">Pago de Deudas</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="transactionDate">Fecha</label>
+                    <input type="date" class="form-control" id="transactionDate" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" id="cancelTransaction">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Sistema de almacenamiento
+        const STORAGE_KEY = 'finanzapp-data';
+        
+        // Cargar datos guardados o usar datos por defecto
+        function loadData() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                return JSON.parse(saved);
+            } else {
+                // Datos de ejemplo iniciales
+                return {
+                    transactions: [
+                        { id: 1, type: 'income', amount: 3000, description: 'Salario', category: 'ingreso', date: new Date().toISOString().split('T')[0] },
+                        { id: 2, type: 'expense', amount: 1200, description: 'Alquiler', category: 'vivienda', date: new Date().toISOString().split('T')[0] },
+                        { id: 3, type: 'expense', amount: 400, description: 'Supermercado', category: 'alimentacion', date: new Date().toISOString().split('T')[0] }
+                    ],
+                    monthlyIncome: 3000
+                };
+            }
+        }
+        
+        // Guardar datos
+        function saveData(data) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+        
+        // Inicializar datos
+        let appData = loadData();
+        let transactions = appData.transactions;
+        
+        // Categorías según la regla 50/30/20
+        const categories = {
+            needs: ['vivienda', 'alimentacion', 'transporte', 'salud', 'servicios'],
+            wants: ['entretenimiento', 'restaurantes', 'viajes', 'ropa', 'hobbies'],
+            savings: ['ahorro', 'inversion', 'deudas']
+        };
+
+        // Elementos del DOM
+        const transactionModal = document.getElementById('transactionModal');
+        const addTransactionBtn = document.getElementById('addTransactionBtn');
+        const closeModal = document.getElementById('closeModal');
+        const cancelTransaction = document.getElementById('cancelTransaction');
+        const transactionForm = document.getElementById('transactionForm');
+        const transactionList = document.getElementById('transactionList');
+        const exportBtn = document.getElementById('exportBtn');
+        const clearDataBtn = document.getElementById('clearDataBtn');
+        
+        // Inicializar la aplicación
+        document.addEventListener('DOMContentLoaded', function() {
+            updateDashboard();
+            renderTransactions();
+            initializeCharts();
+            
+            // Event listeners
+            addTransactionBtn.addEventListener('click', openTransactionModal);
+            closeModal.addEventListener('click', closeTransactionModal);
+            cancelTransaction.addEventListener('click', closeTransactionModal);
+            transactionForm.addEventListener('submit', handleTransactionSubmit);
+            exportBtn.addEventListener('click', exportData);
+            clearDataBtn.addEventListener('click', clearData);
+            
+            // Establecer fecha actual por defecto
+            document.getElementById('transactionDate').valueAsDate = new Date();
+        });
+
+        // Funciones de la aplicación
+        function openTransactionModal() {
+            transactionModal.style.display = 'flex';
+        }
+
+        function closeTransactionModal() {
+            transactionModal.style.display = 'none';
+            transactionForm.reset();
+            document.getElementById('transactionDate').valueAsDate = new Date();
+        }
+
+        function handleTransactionSubmit(e) {
+            e.preventDefault();
+            
+            const type = document.getElementById('transactionType').value;
+            const amount = parseFloat(document.getElementById('transactionAmount').value);
+            const description = document.getElementById('transactionDescription').value;
+            const category = document.getElementById('transactionCategory').value;
+            const date = document.getElementById('transactionDate').value;
+            
+            // Crear nueva transacción
+            const newTransaction = {
+                id: transactions.length > 0 ? Math.max(...transactions.map(t => t.id)) + 1 : 1,
+                type: type,
+                amount: amount,
+                description: description,
+                category: category,
+                date: date
+            };
+            
+            transactions.push(newTransaction);
+            appData.transactions = transactions;
+            saveData(appData);
+            
+            updateDashboard();
+            renderTransactions();
+            updateCharts();
+            closeTransactionModal();
+            
+            // Mostrar notificación
+            showNotification('Transacción agregada correctamente', 'success');
+        }
+
+        function updateDashboard() {
+            // Calcular total de ingresos
+            const totalIncome = transactions
+                .filter(t => t.type === 'income')
+                .reduce((sum, t) => sum + t.amount, 0);
+            
+            // Si no hay ingresos, usar el último ingreso registrado o 0
+            const monthlyIncome = totalIncome > 0 ? totalIncome : (appData.monthlyIncome || 0);
+            
+            // Calcular presupuestos según regla 50/30/20
+            const needsBudget = monthlyIncome * 0.5;
+            const wantsBudget = monthlyIncome * 0.3;
+            const savingsBudget = monthlyIncome * 0.2;
+            
+            // Calcular gastos por categoría
+            const needsExpenses = transactions
+                .filter(t => t.type === 'expense' && categories.needs.includes(t.category))
+                .reduce((sum, t) => sum + t.amount, 0);
+                
+            const wantsExpenses = transactions
+                .filter(t => t.type === 'expense' && categories.wants.includes(t.category))
+                .reduce((sum, t) => sum + t.amount, 0);
+                
+            const savingsExpenses = transactions
+                .filter(t => t.type === 'expense' && categories.savings.includes(t.category))
+                .reduce((sum, t) => sum + t.amount, 0);
+            
+            // Actualizar UI
+            document.getElementById('needsAmount').textContent = `$${needsExpenses.toFixed(2)}`;
+            document.getElementById('wantsAmount').textContent = `$${wantsExpenses.toFixed(2)}`;
+            document.getElementById('savingsAmount').textContent = `$${savingsExpenses.toFixed(2)}`;
+            
+            document.getElementById('needsBudget').textContent = `$${needsBudget.toFixed(2)}`;
+            document.getElementById('wantsBudget').textContent = `$${wantsBudget.toFixed(2)}`;
+            document.getElementById('savingsBudget').textContent = `$${savingsBudget.toFixed(2)}`;
+            
+            // Actualizar barras de progreso
+            document.getElementById('needsProgress').style.width = needsBudget > 0 ? `${Math.min((needsExpenses / needsBudget) * 100, 100)}%` : '0%';
+            document.getElementById('wantsProgress').style.width = wantsBudget > 0 ? `${Math.min((wantsExpenses / wantsBudget) * 100, 100)}%` : '0%';
+            document.getElementById('savingsProgress').style.width = savingsBudget > 0 ? `${Math.min((savingsExpenses / savingsBudget) * 100, 100)}%` : '0%';
+            
+            // Guardar ingreso mensual
+            if (totalIncome > 0) {
+                appData.monthlyIncome = totalIncome;
+                saveData(appData);
+            }
+        }
+
+        function renderTransactions() {
+            transactionList.innerHTML = '';
+            
+            if (transactions.length === 0) {
+                transactionList.innerHTML = '<div class="no-transactions">No hay transacciones registradas</div>';
+                return;
+            }
+            
+            // Ordenar transacciones por fecha (más recientes primero)
+            const sortedTransactions = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            sortedTransactions.forEach(transaction => {
+                const transactionItem = document.createElement('div');
+                transactionItem.className = 'transaction-item';
+                
+                // Determinar color de categoría
+                let categoryColor = '';
+                if (categories.needs.includes(transaction.category)) {
+                    categoryColor = 'var(--needs)';
+                } else if (categories.wants.includes(transaction.category)) {
+                    categoryColor = 'var(--wants)';
+                } else if (categories.savings.includes(transaction.category)) {
+                    categoryColor = 'var(--savings)';
+                } else {
+                    categoryColor = 'var(--primary)'; // Para ingresos
+                }
+                
+                transactionItem.innerHTML = `
+                    <div class="transaction-info">
+                        <div class="transaction-category" style="background-color: ${categoryColor}"></div>
+                        <div>
+                            <div>${transaction.description}</div>
+                            <small>${formatDate(transaction.date)}</small>
+                        </div>
+                    </div>
+                    <div class="transaction-amount ${transaction.type}">
+                        ${transaction.type === 'income' ? '+' : '-'}$${transaction.amount.toFixed(2)}
+                    </div>
+                `;
+                
+                transactionList.appendChild(transactionItem);
+            });
+        }
+
+        function formatDate(dateString) {
+            const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
+            return new Date(dateString).toLocaleDateString('es-ES', options);
+        }
+
+        // Funciones de exportación y limpieza
+        function exportData() {
+            const dataStr = JSON.stringify(appData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `finanzapp-backup-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            
+            showNotification('Datos exportados correctamente', 'success');
+        }
+
+        function clearData() {
+            if (confirm('¿Estás seguro de que quieres eliminar todos los datos? Esta acción no se puede deshacer.')) {
+                localStorage.removeItem(STORAGE_KEY);
+                appData = {
+                    transactions: [],
+                    monthlyIncome: 0
+                };
+                transactions = [];
+                
+                updateDashboard();
+                renderTransactions();
+                updateCharts();
+                
+                showNotification('Datos eliminados correctamente', 'success');
+            }
+        }
+
+        function showNotification(message, type) {
+            // Crear notificación
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px 20px;
+                background: ${type === 'success' ? 'var(--savings)' : 'var(--danger)'};
+                color: white;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 10000;
+                transform: translateX(150%);
+                transition: transform 0.3s ease;
+            `;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            // Animación de entrada
+            setTimeout(() => {
+                notification.style.transform = 'translateX(0)';
+            }, 100);
+            
+            // Animación de salida después de 3 segundos
+            setTimeout(() => {
+                notification.style.transform = 'translateX(150%)';
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 3000);
+        }
+
+        // Gráficos
+        let expensesChart, progressChart;
+
+        function initializeCharts() {
+            // Gráfico de distribución de gastos
+            const expensesCtx = document.getElementById('expensesChart').getContext('2d');
+            expensesChart = new Chart(expensesCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Necesidades', 'Deseos', 'Ahorro'],
+                    datasets: [{
+                        data: [0, 0, 0],
+                        backgroundColor: [
+                            'var(--needs)',
+                            'var(--wants)',
+                            'var(--savings)'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+            
+            // Gráfico de progreso mensual
+            const progressCtx = document.getElementById('progressChart').getContext('2d');
+            progressChart = new Chart(progressCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Necesidades', 'Deseos', 'Ahorro'],
+                    datasets: [{
+                        label: 'Presupuesto',
+                        data: [0, 0, 0],
+                        backgroundColor: 'rgba(200, 200, 200, 0.5)',
+                        borderWidth: 0
+                    }, {
+                        label: 'Gastado',
+                        data: [0, 0, 0],
+                        backgroundColor: [
+                            'var(--needs)',
+                            'var(--wants)',
+                            'var(--savings)'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+            
+            updateCharts();
+        }
+
+        function updateCharts() {
+            // Calcular total de ingresos
+            const totalIncome = transactions
+                .filter(t => t.type === 'income')
+                .reduce((sum, t) => sum + t.amount, 0);
+            
+            // Calcular gastos por categoría
+            const needsExpenses = transactions
+                .filter(t => t.type === 'expense' && categories.needs.includes(t.category))
+                .reduce((sum, t) => sum + t.amount, 0);
+                
+            const wantsExpenses = transactions
+                .filter(t => t.type === 'expense' && categories.wants.includes(t.category))
+                .reduce((sum, t) => sum + t.amount, 0);
+                
+            const savingsExpenses = transactions
+                .filter(t => t.type === 'expense' && categories.savings.includes(t.category))
+                .reduce((sum, t) => sum + t.amount, 0);
+            
+            // Actualizar gráfico de distribución
+            expensesChart.data.datasets[0].data = [needsExpenses, wantsExpenses, savingsExpenses];
+            expensesChart.update();
+            
+            // Actualizar gráfico de progreso
+            progressChart.data.datasets[0].data = [totalIncome * 0.5, totalIncome * 0.3, totalIncome * 0.2];
+            progressChart.data.datasets[1].data = [needsExpenses, wantsExpenses, savingsExpenses];
+            progressChart.update();
+        }
+    </script>
+</body>
+</html>
